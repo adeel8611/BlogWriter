@@ -110,6 +110,10 @@
 **Status:** Not implemented
 **Action Needed:** Real-time content streaming during generation
 
+#### 4. Context Window Manager
+**Status:** Not implemented
+**Action Needed:** As the model we are using has context window of 22K so we need to manage our chat in such a way that it should manage it 
+
 ---
 
 ## 📝 Prompt Engineering Improvements Needed
