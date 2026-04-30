@@ -239,7 +239,20 @@ class AIService {
   }
 
   buildEnhancedSystemPrompt(project, skillsContent) {
-    let prompt = `You are a professional, award-winning blog writer specializing in high-quality, engaging content for "${project.name}".
+    let prompt = `You are a professional blog writer for "${project.name}".
+
+## CRITICAL: OUTPUT FORMAT IS HTML (NOT MARKDOWN)
+- Use <h3> tags for section headings
+- Use <b> tags for bold text
+- Use <p> tags for paragraphs
+- NO markdown symbols (*, #) anywhere
+- Output must be HTML-ready for web publication
+
+## PRIMARY DIRECTIVE: STAY ON TOPIC
+- Write ONLY content relevant to the given topic
+- NO off-topic tangents or random insertions
+- EVERY sentence must serve the main theme
+- Remove anything that doesn't belong
 
 ## CRITICAL QUALITY REQUIREMENTS:
 
@@ -298,97 +311,95 @@ Before finalizing:
 - ✓ Is all content relevant?
 - ✓ Is the tone consistent?
 - ✓ Is the structure clear?
-- ✓ Would I publish this proudly?
+- ✓ Minimum 9,000 characters?
+- ✓ HTML formatted with <h3>, <b>, <p> tags?
+- ✓ No markdown symbols (*, #)?
 
 `;
 
     if (project.blog_rules) {
-      const maxRulesLength = 500;
+      const maxRulesLength = 250;
       let rules = project.blog_rules;
       if (rules.length > maxRulesLength) {
-        rules = rules.substring(0, maxRulesLength) + '...';
-        console.log(`Blog rules truncated from ${project.blog_rules.length} to ${maxRulesLength} characters`);
+        rules = rules.substring(0, maxRulesLength);
       }
-      prompt += `## PROJECT-SPECIFIC WRITING RULES:\n${rules}\n\n`;
+      prompt += `PROJECT GUIDELINES:\n${rules}\n\n`;
     }
 
     if (skillsContent) {
-      const maxSkillsLength = 800;
+      const maxSkillsLength = 600;
       let truncatedSkills = skillsContent;
       if (skillsContent.length > maxSkillsLength) {
         truncatedSkills = skillsContent.substring(0, maxSkillsLength);
-        console.log(`Skills content truncated from ${skillsContent.length} to ${maxSkillsLength} characters`);
       }
 
-      prompt += `## REQUIRED WRITING SKILLS:\n${truncatedSkills}\n\n`;
+      prompt += `WRITING STANDARDS:\n${truncatedSkills}\n\n`;
     }
 
-    prompt += `You produce HIGH-QUALITY blogs (8-9 out of 10 rating). You are detail-oriented, accurate, and never compromise on quality.`;
+    prompt += `FINAL RULES: Output HTML format. Stay on topic. Minimum 9,000 characters. Accurate facts only.`;
 
     return prompt;
   }
 
   buildEnhancedUserPrompt(topic, project, ragDocuments, idealBlog) {
-    let prompt = `# BLOG POST GENERATION REQUEST\n\n`;
+    let prompt = `BLOG GENERATION REQUEST\n\n`;
     
-    prompt += `## TOPIC\n${topic}\n\n`;
+    prompt += `TOPIC: ${topic}\n\n`;
 
     if (project.about_text) {
-      const maxAboutLength = 300;
+      const maxAboutLength = 250;
       let about = project.about_text;
       if (about.length > maxAboutLength) {
         about = about.substring(0, maxAboutLength);
       }
-      prompt += `## PROJECT CONTEXT\nAbout ${project.name}:\n${about}\n\n`;
+      prompt += `PROJECT: About ${project.name}:\n${about}\n\n`;
     }
 
     if (idealBlog) {
-      const maxIdealBlogLength = 2000;
+      const maxIdealBlogLength = 1500;
       let truncatedIdealBlog = idealBlog;
       if (idealBlog.length > maxIdealBlogLength) {
         truncatedIdealBlog = idealBlog.substring(0, maxIdealBlogLength);
-        console.log(`Ideal blog truncated from ${idealBlog.length} to ${maxIdealBlogLength} characters`);
       }
-      prompt += `## STYLE REFERENCE - STUDY THIS FOR QUALITY & TONE:\nLearn from this example blog post:\n${truncatedIdealBlog}\n\n`;
+      prompt += `STYLE REFERENCE (quality & tone):\n${truncatedIdealBlog}\n\n`;
     }
 
     if (ragDocuments && ragDocuments.length > 0) {
       let context = ragDocuments.map(doc => doc.content).join('\n\n');
-      const maxContextLength = 2000;
+      const maxContextLength = 1500;
       if (context.length > maxContextLength) {
         context = context.substring(0, maxContextLength);
-        console.log('Context truncated to', maxContextLength, 'characters');
       }
-      prompt += `## ADDITIONAL CONTEXT FROM KNOWLEDGE BASE:\n${context}\n\n`;
+      prompt += `KNOWLEDGE BASE:\n${context}\n\n`;
     }
 
-    prompt += `## REQUIRED OUTPUT FORMAT:\n\n`;
-    prompt += `1. H1 TITLE (engaging, keyword-rich, 8-12 words)\n`;
-    prompt += `2. META DESCRIPTION (160 characters exactly, benefit-driven)\n`;
-    prompt += `3. INTRODUCTION (150-200 words: hook + context + promise)\n`;
-    prompt += `4. MAIN CONTENT (5-8 H2 sections, each 150-200 words)\n`;
-    prompt += `5. CONCLUSION (75-125 words: summary + takeaway)\n\n`;
-    
-    prompt += `## QUALITY REQUIREMENTS:\n`;
-    prompt += `- ACCURACY: Every fact must be correct, no hallucinations\n`;
-    prompt += `- NO DUPLICATES: Never repeat sections or content\n`;
-    prompt += `- NO OFF-TOPIC: All content must serve the main topic\n`;
-    prompt += `- STRUCTURE: Clear H2/H3 headers, scannable format\n`;
-    prompt += `- TONE: Friendly, specific, practical, conversational\n`;
-    prompt += `- COMPLETENESS: Answer reader questions comprehensively\n`;
-    prompt += `- FORMATTING: Include comparison table if applicable, use bold for key terms\n\n`;
+    prompt += `OUTPUT FORMAT: HTML (NOT MARKDOWN)\n`;
+    prompt += `- Use <h3> tags for section headings\n`;
+    prompt += `- Use <b> tags for bold text\n`;
+    prompt += `- Use <p> tags for paragraphs\n`;
+    prompt += `- NO * or # symbols\n`;
+    prompt += `- HTML-ready output\n\n`;
 
-    prompt += `## TARGET LENGTH & QUALITY\n`;
-    prompt += `- Total: 1,500-2,500 words (NOT shorter)\n`;
-    prompt += `- Per-section: 150+ words minimum (substantial content)\n`;
-    prompt += `- Quality target: 8-9 out of 10 rating\n`;
-    prompt += `- Must be publish-ready with no revisions needed\n\n`;
+    prompt += `REQUIRED STRUCTURE:\n`;
+    prompt += `1. Title (plain text, first line)\n`;
+    prompt += `2. Meta Description (160 characters)\n`;
+    prompt += `3. Introduction (150-250 words)\n`;
+    prompt += `4. Main Content with <h3> headers\n`;
+    prompt += `5. FAQ Section (6-8 questions)\n`;
+    prompt += `6. Total: 9,000+ characters minimum\n\n`;
 
-    prompt += `NOW WRITE THE BLOG POST IN MARKDOWN FORMAT:\n`;
-    prompt += `Start with: # [Title]\n`;
-    prompt += `Followed by: Meta Description on next line\n`;
-    prompt += `Then: Introduction, sections, conclusion\n`;
-    prompt += `\n---\n\nBLOG POST:\n`;
+    prompt += `CRITICAL REQUIREMENTS:\n`;
+    prompt += `- STAY ON TOPIC: Every sentence relevant to main topic\n`;
+    prompt += `- NO OFF-TOPIC: No random tangents or unrelated content\n`;
+    prompt += `- ACCURACY: All facts correct and verifiable\n`;
+    prompt += `- LENGTH: Minimum 9,000 characters (~2,000-2,500 words)\n`;
+    prompt += `- PER SECTION: 150-200 words each\n`;
+    prompt += `- NO PADDING: Substantive content only\n`;
+    prompt += `- TONE: Friendly, specific, practical, confident\n\n`;
+
+    prompt += `NOW WRITE THE COMPLETE BLOG IN HTML:\n`;
+    prompt += `Title on first line, Meta Description on second\n`;
+    prompt += `Then full blog with <h3>, <b>, <p> tags\n\n`;
 
     return prompt;
   }
