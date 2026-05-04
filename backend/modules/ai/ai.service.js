@@ -7,22 +7,26 @@ const path = require('path');
 class AIService {
   constructor() {
     // Use Ollama API (Local LLM)
+    // RECOMMENDED MODELS (in order of preference):
+    // - llama3.2:8b (best quality, recommended for production)
+    // - llama3.2:3b (good balance of quality and speed)
+    // - qwen2.5:7b (strong reasoning)
     this.baseUrl = process.env.OLLAMA_API_URL || 'http://172.16.97.110:11434';
     this.model = process.env.OLLAMA_MODEL || 'qwen2.5:1.5b';
     this.maxTokens = 6000;
-    this.temperature = 0.7;
+    this.temperature = 0.8; // Slightly higher for more creative, varied writing
 
     // Rate limiting settings (less aggressive for local LLM)
     this.maxRetries = 3;
     this.initialRetryDelay = 1000;
-    this.maxRetryDelay = 30000;
+    this.maxRetryDelay = 300000;
     this.requestQueue = [];
     this.isProcessingQueue = false;
 
     // Debug: log configuration
     console.log(`🤖 AI Service Configuration:`);
     console.log(`   Server: ${this.baseUrl}`);
-    console.log(`   Model: ${this.model}`);
+    console.log(`   Model: ${this.model} (recommend: llama3.2:8b for best quality)`);
   }
 
   async generateBlog(projectId, topic) {
@@ -239,167 +243,154 @@ class AIService {
   }
 
   buildEnhancedSystemPrompt(project, skillsContent) {
-    let prompt = `You are a professional blog writer for "${project.name}".
+    let prompt = `You are a professional blog writer for "${project.name}" known for authentic, engaging content.
 
-## CRITICAL: OUTPUT FORMAT IS HTML (NOT MARKDOWN)
-- Use <h3> tags for section headings
-- Use <b> tags for bold text
-- Use <p> tags for paragraphs
-- NO markdown symbols (*, #) anywhere
-- Output must be HTML-ready for web publication
+## CORE PRINCIPLES
 
-## PRIMARY DIRECTIVE: STAY ON TOPIC
-- Write ONLY content relevant to the given topic
-- NO off-topic tangents or random insertions
-- EVERY sentence must serve the main theme
-- Remove anything that doesn't belong
+**Write Like a Human, Not a Machine**
+- Your goal is authentic, engaging writing that feels genuinely written by someone with experience
+- Vary your sentence structure, paragraph length, and section organization naturally
+- Each blog should have its own flow, not follow a rigid template
 
-## CRITICAL QUALITY REQUIREMENTS:
+**Authenticity Over Rules**
+- Use real examples, specific details, and practical insights
+- Avoid generic phrases like "perfect balance," "bursting with flavor," or "amazing experience"
+- Include sensory details and real-world context when relevant
+- Write as if you've actually experienced what you're describing
 
-### 1. ACCURACY & FACTUAL INTEGRITY
-- NEVER include false, made-up, or "hallucinated" information
-- Only claim facts you are absolutely certain about
-- If unsure about a specific detail, use general/safe language instead
-- Verify all definitions, claims, and examples are accurate
-- Do not make up product names, statistics, or specific details
+**Quality Through Substance**
+- Focus on providing genuine value to the reader
+- Each section should teach something new or provide practical insight
+- Depth comes from meaningful content, not from word count requirements
+- Include FAQs that address real reader questions with thoughtful answers
 
-### 2. STRUCTURE & ORGANIZATION
-- REQUIRED: H1 title (# Title Here)
-- REQUIRED: Meta description (160 characters) as first line after H1
-- REQUIRED: Introduction section (150-200 words)
-- REQUIRED: 3-5 main content sections (each H2)
-- REQUIRED: Conclusion section (75-125 words)
-- Each main section should have 150-200 words of quality content
-- NO duplicate or repeated sections (never copy-paste content twice)
-- NO rambling or off-topic tangents
-- Clear, logical flow from start to finish
+## WRITING GUIDELINES
 
-### 3. FORMATTING & READABILITY
+**Structure (Flexible)**
+- Clear, benefit-driven title (8-12 words works well)
+- Introduction that hooks the reader and sets context
+- Main content organized with clear sections
+- Natural conclusion with key takeaways
+- FAQ section with 5-7 meaningful questions
+
+**Tone & Voice**
+- Friendly and conversational, like a trusted friend
+- Specific and practical - avoid vague statements
+- Direct address to the reader ("you", "your")
+- Mix short and long sentences for natural rhythm
+- Active voice preferred, passive for emphasis when needed
+
+**Content Integrity**
+- Only include facts you're certain about
+- When uncertain, use careful, qualified language
+- No made-up statistics, product names, or specific details
+- All claims should be defensible and accurate
+
+**Formatting**
 - Use H2 (##) for main sections, H3 (###) for subsections
-- Include comparison tables where relevant (markdown format)
-- Use bullet points ONLY for lists, not narrative paragraphs
-- Bold key concepts and important terms
-- Keep paragraphs to 3-5 sentences maximum
-- Ensure "skimmable" structure (readers can scan and understand)
-
-### 4. TONE & VOICE
-- Friendly and conversational (sound like a trusted friend)
-- Specific and practical (avoid generic statements)
-- Confident but not salesy
-- Use "you" and "your" to address reader
-- Active voice, varied sentence length
-- No marketing hype or fluff ("amazing", "revolutionary")
-
-### 5. RELEVANCE & BRAND ALIGNMENT
-- Content must be directly relevant to the topic
-- NO random insertions of unrelated products/services
-- Any CTA must feel natural and on-brand
-- All sections must serve the main topic
-- Remove anything that doesn't belong
-
-### 6. SEO OPTIMIZATION
-- Include meta description (160 characters)
-- Integrate 2-3 keywords naturally throughout
-- Use clear heading hierarchy (H1, H2, H3)
-- Proper markdown formatting aids SEO
-- Answer search intent comprehensively
-
-### 7. QUALITY CHECKS BEFORE OUTPUT
-Before finalizing:
-- ✓ Is every fact accurate?
-- ✓ Are there any duplicate sections?
-- ✓ Is all content relevant?
-- ✓ Is the tone consistent?
-- ✓ Is the structure clear?
-- ✓ Minimum 9,000 characters?
-- ✓ HTML formatted with <h3>, <b>, <p> tags?
-- ✓ No markdown symbols (*, #)?
+- Bold key terms and important concepts sparingly
+- Use bullet points for lists, not narrative
+- Keep paragraphs readable (3-5 sentences typically)
 
 `;
 
     if (project.blog_rules) {
-      const maxRulesLength = 250;
+      const maxRulesLength = 500;
       let rules = project.blog_rules;
       if (rules.length > maxRulesLength) {
-        rules = rules.substring(0, maxRulesLength);
+        rules = rules.substring(0, maxRulesLength) + '...';
+        console.log(`Blog rules truncated from ${project.blog_rules.length} to ${maxRulesLength} characters`);
       }
-      prompt += `PROJECT GUIDELINES:\n${rules}\n\n`;
+      prompt += `## PROJECT-SPECIFIC CONTEXT:\n${rules}\n\n`;
     }
 
     if (skillsContent) {
-      const maxSkillsLength = 600;
+      const maxSkillsLength = 800;
       let truncatedSkills = skillsContent;
       if (skillsContent.length > maxSkillsLength) {
         truncatedSkills = skillsContent.substring(0, maxSkillsLength);
+        console.log(`Skills content truncated from ${skillsContent.length} to ${maxSkillsLength} characters`);
       }
 
-      prompt += `WRITING STANDARDS:\n${truncatedSkills}\n\n`;
+      prompt += `## WRITING STYLE REFERENCE:\n${truncatedSkills}\n\n`;
     }
 
-    prompt += `FINAL RULES: Output HTML format. Stay on topic. Minimum 9,000 characters. Accurate facts only.`;
+    prompt += `Your blogs should be substantial (typically 1,500-2,500 words) because you're providing real value through detailed, meaningful content—not because you're meeting a quota. Write something you'd be proud to publish under your own name.`;
 
     return prompt;
   }
 
   buildEnhancedUserPrompt(topic, project, ragDocuments, idealBlog) {
-    let prompt = `BLOG GENERATION REQUEST\n\n`;
-    
-    prompt += `TOPIC: ${topic}\n\n`;
+    let prompt = `# BLOG REQUEST\n\n`;
+
+    prompt += `## Topic\n${topic}\n\n`;
+
+    prompt += `## Project Context (Use This Throughout Your Writing)\n\n`;
+    prompt += `**Project Name**: ${project.name}\n\n`;
 
     if (project.about_text) {
-      const maxAboutLength = 250;
+      const maxAboutLength = 300;
       let about = project.about_text;
       if (about.length > maxAboutLength) {
         about = about.substring(0, maxAboutLength);
       }
-      prompt += `PROJECT: About ${project.name}:\n${about}\n\n`;
+      prompt += `**About**: ${about}\n\n`;
     }
 
+    // Add project-specific context for authentic writing
+    prompt += `**Important**: Incorporate this project information naturally throughout your blog:\n\n`;
+    prompt += `- The project's actual name and location context (when relevant)\n`;
+    prompt += `- The real atmosphere and environment of this venue/business\n`;
+    prompt += `- Who actually visits or uses this project (audience types)\n`;
+    prompt += `- Situational context specific to this project (timing, events, usage patterns)\n\n`;
+
+    prompt += `Do NOT hardcode other project names or locations. Only use the actual data provided above for "${project.name}".\n\n`;
+
     if (idealBlog) {
-      const maxIdealBlogLength = 1500;
+      const maxIdealBlogLength = 2000;
       let truncatedIdealBlog = idealBlog;
       if (idealBlog.length > maxIdealBlogLength) {
         truncatedIdealBlog = idealBlog.substring(0, maxIdealBlogLength);
+        console.log(`Ideal blog truncated from ${idealBlog.length} to ${maxIdealBlogLength} characters`);
       }
-      prompt += `STYLE REFERENCE (quality & tone):\n${truncatedIdealBlog}\n\n`;
+      prompt += `## Style Reference (Study for tone and approach):\n${truncatedIdealBlog}\n\n`;
     }
 
     if (ragDocuments && ragDocuments.length > 0) {
       let context = ragDocuments.map(doc => doc.content).join('\n\n');
-      const maxContextLength = 1500;
+      const maxContextLength = 2000;
       if (context.length > maxContextLength) {
         context = context.substring(0, maxContextLength);
+        console.log('Context truncated to', maxContextLength, 'characters');
       }
-      prompt += `KNOWLEDGE BASE:\n${context}\n\n`;
+      prompt += `## Context from Knowledge Base:\n${context}\n\n`;
     }
 
-    prompt += `OUTPUT FORMAT: HTML (NOT MARKDOWN)\n`;
-    prompt += `- Use <h3> tags for section headings\n`;
-    prompt += `- Use <b> tags for bold text\n`;
-    prompt += `- Use <p> tags for paragraphs\n`;
-    prompt += `- NO * or # symbols\n`;
-    prompt += `- HTML-ready output\n\n`;
+    prompt += `## What We're Looking For\n\n`;
+    prompt += `Write a comprehensive, engaging blog post that provides real value to readers. Focus on:\n\n`;
+    prompt += `**Structure:** Clear title, introduction, well-organized main content, conclusion, and FAQ section\n\n`;
+    prompt += `**Content:** Substantial depth (aim for 1,500-2,500 words naturally) with practical information, examples, and insights\n\n`;
+    prompt += `**Authenticity:** Write as someone with genuine experience at "${project.name}". Use specific details, avoid generic phrases\n\n`;
+    prompt += `**Project Integration:** Use "${project.name}" and its real context naturally throughout — not just mentioned once\n`;
+    prompt += `**Tone:** Friendly and conversational, like you're talking to a friend who's interested in this topic\n\n`;
+    prompt += `**Quality:** Each section should teach something. No filler, no repetition, no off-topic content\n\n`;
+    prompt += `**FAQ:** Include 5-7 questions that real readers of "${project.name}" would actually ask, with thoughtful answers\n\n`;
 
-    prompt += `REQUIRED STRUCTURE:\n`;
-    prompt += `1. Title (plain text, first line)\n`;
-    prompt += `2. Meta Description (160 characters)\n`;
-    prompt += `3. Introduction (150-250 words)\n`;
-    prompt += `4. Main Content with <h3> headers\n`;
-    prompt += `5. FAQ Section (6-8 questions)\n`;
-    prompt += `6. Total: 9,000+ characters minimum\n\n`;
+    prompt += `## Format Guidelines\n\n`;
+    prompt += `- Use # for title\n`;
+    prompt += `- Use ## for main sections, ### for subsections\n`;
+    prompt += `- Include a meta description (around 160 characters) after the title\n`;
+    prompt += `- Bold key terms sparingly with **text**\n`;
+    prompt += `- Use bullet points for lists, not narrative\n\n`;
 
-    prompt += `CRITICAL REQUIREMENTS:\n`;
-    prompt += `- STAY ON TOPIC: Every sentence relevant to main topic\n`;
-    prompt += `- NO OFF-TOPIC: No random tangents or unrelated content\n`;
-    prompt += `- ACCURACY: All facts correct and verifiable\n`;
-    prompt += `- LENGTH: Minimum 9,000 characters (~2,000-2,500 words)\n`;
-    prompt += `- PER SECTION: 150-200 words each\n`;
-    prompt += `- NO PADDING: Substantive content only\n`;
-    prompt += `- TONE: Friendly, specific, practical, confident\n\n`;
+    prompt += `## Key Requirements\n\n`;
+    prompt += `- Vary section structure (storytelling, comparison, informational) — don't follow the same pattern for every item\n`;
+    prompt += `- Include real situational descriptions (timing, visitor types, atmosphere)\n`;
+    prompt += `- Replace generic phrases with specific descriptions (texture, contrast, actual usage scenarios)\n`;
+    prompt += `- Make FAQs intent-based and specific to "${project.name}" context\n\n`;
 
-    prompt += `NOW WRITE THE COMPLETE BLOG IN HTML:\n`;
-    prompt += `Title on first line, Meta Description on second\n`;
-    prompt += `Then full blog with <h3>, <b>, <p> tags\n\n`;
+    prompt += `Write naturally and authentically. Your blog should feel like it was written by a real person who knows and cares about "${project.name}".\n\n`;
+    prompt += `---\n\n`;
 
     return prompt;
   }
@@ -489,186 +480,67 @@ Please provide ${count} unique, engaging blog topics that would resonate with th
   validateBlogQuality(content, title) {
     const issues = [];
     const warnings = [];
+    const charCount = content.length;
     const wordCount = content.split(/\s+/).length;
-    
-    // Check 1: Word Count
-    if (wordCount < 1200) {
-      issues.push(`Content too short: ${wordCount} words (minimum 1,200 required)`);
-    }
-    
-    // Check 2: Structure - Look for H1
+
+    // CRITICAL ISSUES ONLY - These are blockers
+
+    // 1. Basic Structure
     if (!content.match(/^#\s+.+$/m)) {
-      issues.push('Missing H1 title (# Title format)');
+      issues.push('Missing H1 title');
     }
-    
-    // Check 3: Meta Description (EXACTLY 160 chars - CRITICAL)
-    const metaMatch = content.match(/^#\s+.+\n(.+?)(?:\n\n|$)/);
-    let metaLength = 0;
-    if (metaMatch) {
-      metaLength = metaMatch[1].trim().length;
-      if (metaLength < 150 || metaLength > 170) {
-        issues.push(`Meta description is ${metaLength} characters (MUST be 150-170, closer to 160). Current: "${metaMatch[1].trim().substring(0, 50)}..."`);
-      }
-    } else {
-      issues.push('Missing meta description (should be on line 2, after H1 title)');
+
+    // 2. Minimum content threshold (substantial content, not just filler)
+    if (charCount < 5000) {
+      issues.push(`Content too short: ${charCount.toLocaleString()} characters (aim for 7,000+ for substantive depth)`);
     }
-    
-    // Check 4: Introduction
-    const hasIntro = content.match(/##\s+(Introduction|Overview|Background)/i);
-    if (!hasIntro) {
-      warnings.push('Missing explicit Introduction section header');
-    }
-    
-    // Check 5: Conclusion
-    const hasConclusion = content.match(/##\s+(Conclusion|Summary|Final\s+Thoughts)/i);
-    if (!hasConclusion) {
-      warnings.push('Missing explicit Conclusion section header');
-    }
-    
-    // Check 6: Duplicate Sections (look for repeated headers)
-    const headers = content.match(/^#+\s+.+$/gm) || [];
-    const headerTexts = headers.map(h => h.toLowerCase());
-    const headerSet = new Set(headerTexts);
-    if (headerSet.size < headerTexts.length) {
-      issues.push('Duplicate section headers detected');
-    }
-    
-    // Check 7: Duplicate Content (look for large repeated text blocks)
+
+    // 3. Duplicate content (large repeated blocks)
     const paragraphs = content.split(/\n\n+/);
-    const duplicateBlocks = [];
+    let duplicateCount = 0;
     for (let i = 0; i < paragraphs.length; i++) {
       for (let j = i + 1; j < paragraphs.length; j++) {
         const similarity = this.stringSimilarity(paragraphs[i], paragraphs[j]);
-        if (similarity > 0.75) {
-          duplicateBlocks.push({
-            para1: paragraphs[i].substring(0, 40),
-            para2: paragraphs[j].substring(0, 40),
-            similarity: (similarity * 100).toFixed(0)
-          });
+        if (similarity > 0.8) {
+          duplicateCount++;
         }
       }
     }
-    if (duplicateBlocks.length > 0) {
-      issues.push(`Found ${duplicateBlocks.length} highly similar content blocks (possible duplication)`);
+    if (duplicateCount > 2) {
+      issues.push(`Found ${duplicateCount} highly similar content blocks - avoid repetition`);
     }
-    
-    // Check 8: Paragraph Length
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
-    const avgSentencesPerPara = sentences.length / Math.max(paragraphs.length, 1);
-    if (avgSentencesPerPara < 2) {
-      warnings.push('Paragraphs may be too short - aim for 3-5 sentences per paragraph');
-    }
-    
-    // Check 9: Look for off-topic content
-    const offTopicPatterns = ['paddle board', 'kayak', 'completely unrelated', 'check out our store', 'contact us for'];
-    for (const pattern of offTopicPatterns) {
-      if (content.toLowerCase().includes(pattern)) {
-        issues.push(`Off-topic content detected: "${pattern}"`);
+
+    // WARNINGS (not blockers)
+
+    // 1. Meta description length (flexible, around 160 chars)
+    const metaMatch = content.match(/^#\s+.+\n(.+?)(?:\n\n|$)/);
+    if (metaMatch) {
+      const metaLength = metaMatch[1].trim().length;
+      if (metaLength < 120 || metaLength > 200) {
+        warnings.push(`Meta description is ${metaLength} characters (ideal is 150-170)`);
       }
     }
-    
-    // Check 10: Formatting - look for proper headers
+
+    // 2. Missing FAQ section
+    if (!content.match(/##\s+FAQ/i) && !content.match(/##\s+Frequently\s+Asked/i)) {
+      warnings.push('No FAQ section detected - consider adding one');
+    }
+
+    // 3. Structure headers
     const h2Count = (content.match(/^##\s+/gm) || []).length;
-    if (h2Count < 5) {
-      issues.push(`Not enough H2 sections: ${h2Count} (need at least 5-8)`);
+    if (h2Count < 3) {
+      warnings.push(`Only ${h2Count} H2 sections - consider more organization for readability`);
     }
-    
-    // Check 11: CRITICAL - Generic/Weak Language Check
-    const genericPhrases = [
-      'explosion of flavors',
-      'symphony of flavors',
-      'perfect blend',
-      'harmonious',
-      'amazing',
-      'incredible',
-      'revolutionary',
-      'life-changing',
-      'game-changing',
-      'in today\'s world',
-      'as we all know',
-      'this groundbreaking'
-    ];
-    const foundGenericPhrases = [];
-    for (const phrase of genericPhrases) {
-      if (content.toLowerCase().includes(phrase)) {
-        foundGenericPhrases.push(phrase);
-      }
-    }
-    if (foundGenericPhrases.length > 2) {
-      issues.push(`Too much generic/marketing language: "${foundGenericPhrases.join('", "')}" - Replace with specific details`);
-    }
-    
-    // Check 12: CRITICAL - Logical Consistency Check
-    // Look for items with mismatched names and content (e.g., "Triple Turkey" with "ham" in description)
-    const itemSections = content.match(/###\s+\d+\.\s+(.+?)(?=###|##(?!#)|$)/gs) || [];
-    const logicalIssues = [];
-    
-    for (const section of itemSections) {
-      const titleMatch = section.match(/###\s+\d+\.\s+(.+)/);
-      if (titleMatch) {
-        const itemTitle = titleMatch[1].toLowerCase();
-        const itemContent = section.toLowerCase();
-        
-        // Check if main ingredient in title appears in content
-        const mainWord = itemTitle.split(/\s+/)[0];
-        
-        // Special cases for logical consistency
-        if (itemTitle.includes('triple turkey') && itemContent.includes('ham')) {
-          logicalIssues.push('Triple Turkey item includes ham (should focus on turkey only)');
-        }
-        if (itemTitle.includes('bacon') && !itemContent.includes('bacon')) {
-          logicalIssues.push(`"${itemTitle}" title mentions bacon but content doesn't`);
-        }
-      }
-    }
-    if (logicalIssues.length > 0) {
-      issues.push(`Logical inconsistencies found: ${logicalIssues.join('; ')}`);
-    }
-    
-    // Check 13: CRITICAL - Repetitive Ingredients Check
-    // Flag if same ingredients appear in multiple items
-    const ingredientPattern = /ingredients?:\s*(.+?)(?:\n|$)/gi;
-    const allIngredients = [];
-    let match;
-    while ((match = ingredientPattern.exec(content)) !== null) {
-      allIngredients.push(match[1].toLowerCase());
-    }
-    
-    const commonIngredients = ['lettuce', 'tomato', 'bread', 'cheese', 'mayo'];
-    const repetitionCount = {};
-    
-    for (const ingredient of commonIngredients) {
-      let count = 0;
-      for (const itemIngredients of allIngredients) {
-        if (itemIngredients.includes(ingredient)) count++;
-      }
-      if (count > 5) { // If same ingredient appears in 5+ items
-        repetitionCount[ingredient] = count;
-      }
-    }
-    
-    if (Object.keys(repetitionCount).length > 0) {
-      const repeated = Object.entries(repetitionCount).map(([ing, count]) => `${ing} (${count} items)`).join(', ');
-      warnings.push(`Highly repetitive ingredients detected: ${repeated} - Consider more variety in sandwich types`);
-    }
-    
-    // Check 14: CRITICAL - Outline Format Check (artificial "Hook:" labels)
-    if (content.match(/^\s*\*?Hook\*?:/gm) || content.match(/^\s*\*?Introduction\*?:/gm)) {
-      issues.push('Content appears to be in outline format with labels (Hook:, Introduction:) - Should be natural prose format');
-    }
-    
+
     return {
       isValid: issues.length === 0,
       issues,
       warnings,
       metrics: {
+        charCount: charCount.toLocaleString(),
         wordCount,
         h2Sections: h2Count,
-        paragraphs: paragraphs.length,
-        avgSentencesPerPara: avgSentencesPerPara.toFixed(1),
-        metaDescriptionLength: metaLength,
-        genericPhrasesFound: foundGenericPhrases.length,
-        logicalInconsistencies: logicalIssues.length
+        paragraphs: paragraphs.length
       }
     };
   }
